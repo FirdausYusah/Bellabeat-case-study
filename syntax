@@ -1,0 +1,74 @@
+--data storage
+create database bellabeat
+use bellabeat
+
+--check data type
+SELECT 
+TABLE_CATALOG,
+TABLE_SCHEMA,
+TABLE_NAME, 
+COLUMN_NAME, 
+DATA_TYPE 
+FROM INFORMATION_SCHEMA.COLUMNS
+
+select *
+from dailyActivity_merged
+
+select *
+from sleepDay_merged
+
+select*
+from hourlyIntensities_merged
+
+-- user average activities
+select Id, AVG(TotalSteps) as avg_steps, AVG(VeryActiveMinutes) as avg_VAM, AVG(FairlyActiveMinutes) as avg_FAM,
+	AVG(LightActiveDistance) as avg_LAM, AVG(SedentaryMinutes) as avg_sedentary
+from dailyActivity_merged
+group by Id
+
+--user who don't use smart device daily
+select Id, COUNT(Id) as no_usage_day
+from dailyActivity_merged
+where TotalSteps = 0
+group by Id
+
+--user daily count to track sleep
+select Id, COUNT(SleepDay) as Days_sleep_track
+from sleepDay_merged
+group by Id
+
+--check len activity hour
+select LEN(ActivityHour), ActivityHour
+from hourlyIntensities_merged
+
+--create active hour temp table
+select convert(varchar (10), cast(ActivityHour as time), 0) as active_hour, TotalIntensity
+into #activehour
+from hourlyIntensities_merged
+where TotalIntensity > 0
+
+select * from #activehour
+
+--active hour and avg total intensity
+select active_hour, AVG(TotalIntensity) as avg_total_intensity
+from #activehour
+group by active_hour
+order by active_hour
+
+--create new_sleep table
+select Id, rtrim(CONVERT(varchar(9), SleepDay, 111)) as sleep_date, TotalMinutesAsleep
+into sleep_new
+from sleepDay_merged
+
+select * from sleep_new
+
+--inner join table
+select DA.Id, DA.SedentaryMinutes, SD.TotalMinutesAsleep
+from dailyActivity_merged DA
+left join sleep_new SD
+on (DA.Id = SD.Id and DA.ActivityDate = SD.sleep_date)
+where SD.TotalMinutesAsleep is not null
+
+--average sleeping hours
+select min(TotalMinutesAsleep), max(TotalMinutesAsleep), (avg(TotalMinutesAsleep))/60 as avg_sleep_hr
+from sleepDay_merged
